@@ -210,6 +210,10 @@ def main():
              '"host" connection argument (S3 only).'
         )
     parser.add_argument(
+        '--ignore', metavar='IGNORE', default='s3_ignore',
+        help='.gitignore like functionality'
+        )
+    parser.add_argument(
         '-g', '--grant',
         help='A canned ACL policy that will be granted on each file ' + \
              'transferred to S3/GS. The value provided must be one of the ' + \
@@ -313,6 +317,12 @@ def main():
         cloud_secret_access_key = args.cloud_secret_access_key
         anon = args.anon
         endpoint = args.endpoint
+        ignore = args.ignore
+        try:
+            with open(ignore, 'r') as f:
+                ignore = filter(None, f.read().splitlines())
+        except:
+            ignore = []
         grant = args.grant
         metadata = args.metadata
         if not isinstance(metadata, dict):
@@ -541,6 +551,14 @@ def main():
                     fullpath = os.path.join(root, file)
                     key_name = cloud_path + get_key_name(fullpath, path)
                     file_size = os.path.getsize(fullpath)
+
+                    if os.path.splitext(fullpath)[1] in ignore:
+                        if not quiet:
+                            sys.stdout.write(
+                                'Skipping %s (ignored file)\n' %
+                                fullpath[len(path):].lstrip(os.sep)
+                                )
+                        continue
                     
                     if file_size == 0:
                         if ignore_empty:
